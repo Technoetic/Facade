@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>빌딩 관리 시스템 - 파사드 패턴</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-green: #00ff41;
+            --neon-orange: #ff8800;
+            --neon-purple: #b794f6;
+            --dark-bg: #0a0a12;
+            --panel-bg: rgba(20, 20, 30, 0.8);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --text-main: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image:
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            border-bottom: var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 18, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-green));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-panel {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 서브시스템 상태 패널과 활동 로그 패널 높이 맞추기 */
+        .left-panel > .panel:nth-child(2) {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .right-panel > .panel {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            border-bottom: 2px solid;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header.blue {
+            color: var(--neon-blue);
+            border-color: var(--neon-blue);
+        }
+
+        .panel-header.green {
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+        }
+
+        .panel-header.orange {
+            color: var(--neon-orange);
+            border-color: var(--neon-orange);
+        }
+
+        .panel-header.purple {
+            color: var(--neon-purple);
+            border-color: var(--neon-purple);
+        }
+
+        /* Facade Control Panel */
+        .facade-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .facade-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            color: var(--neon-blue);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .facade-button:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+            transform: translateY(-2px);
+        }
+
+        .facade-button.active {
+            background: var(--neon-green);
+            border-color: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        /* Subsystem Status */
+        .subsystem-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .subsystem-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .subsystem-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .subsystem-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .subsystem-icon {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+        }
+
+        .subsystem-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .subsystem-name {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .subsystem-status {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .subsystem-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--neon-green);
+        }
+
+        /* Activity Log */
+        .activity-log {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        .log-entry {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .log-entry.info {
+            border-color: var(--neon-blue);
+        }
+
+        .log-entry.success {
+            border-color: var(--neon-green);
+        }
+
+        .log-entry.warning {
+            border-color: var(--neon-orange);
+        }
+
+        .log-time {
+            color: #888;
+            font-size: 0.75rem;
+            margin-right: 8px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Pattern Info */
+        .pattern-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pattern-title {
+            color: var(--neon-blue);
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .pattern-description {
+            color: #aaa;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            font-family: 'Consolas', monospace;
+            background: #111;
+            color: #ddd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🏢 빌딩 관리 시스템</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>시스템 온라인</span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <!-- Facade Control Panel -->
+            <div class="panel">
+                <div class="panel-header blue">
+                    <span>⚡ 파사드 제어</span>
+                </div>
+                <div class="facade-controls">
+                    <div class="facade-button" id="btnMorning">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">🌅</div>
+                        <div>업무 시작</div>
+                    </div>
+                    <div class="facade-button" id="btnDay">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">☀️</div>
+                        <div>업무 시간</div>
+                    </div>
+                    <div class="facade-button" id="btnEvening">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">🌆</div>
+                        <div>퇴근 시간</div>
+                    </div>
+                    <div class="facade-button" id="btnNight">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">🌙</div>
+                        <div>야간 모드</div>
+                    </div>
+                    <div class="facade-button" id="btnAway">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">🚪</div>
+                        <div>퇴근 모드</div>
+                    </div>
+                    <div class="facade-button" id="btnSleep">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">💤</div>
+                        <div>절전 모드</div>
+                    </div>
+                </div>
+
+                <div class="pattern-info">
+                    <div class="pattern-title">파사드 패턴 (Facade Pattern)</div>
+                    <div class="pattern-description">
+                        복잡한 서브시스템(조명, 공조, 보안, 방송)을 단순한 인터페이스로 통합합니다.
+                        <br>클라이언트는 <span class="code-snippet">buildingFacade.setWorkStartMode()</span> 하나의 메서드로
+                        여러 서브시스템을 제어할 수 있습니다.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subsystem Status -->
+            <div class="panel">
+                <div class="panel-header green">
+                    <span>📊 서브시스템 상태</span>
+                </div>
+                <div class="subsystem-list" id="subsystemList">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <!-- Activity Log -->
+            <div class="panel">
+                <div class="panel-header orange">
+                    <span>📝 활동 로그</span>
+                </div>
+                <div class="activity-log" id="activityLog">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================
+         * 파사드 패턴 구현
+         * ============================================
+         * 복잡한 서브시스템들을 단순한 인터페이스로 통합
+         */
+
+        // ========== 서브시스템 1: 조명 시스템 ==========
+        class LightingSystem {
+            constructor() {
+                this.brightness = 0;
+                this.isOn = false;
+                this.color = '#ffffff';
+            }
+
+            turnOn(brightness = 100) {
+                this.isOn = true;
+                this.brightness = brightness;
+                return `조명 켜짐 (밝기: ${brightness}%)`;
+            }
+
+            turnOff() {
+                this.isOn = false;
+                this.brightness = 0;
+                return `조명 꺼짐`;
+            }
+
+            setBrightness(level) {
+                this.brightness = level;
+                return `조명 밝기 조정: ${level}%`;
+            }
+
+            setColor(color) {
+                this.color = color;
+                return `조명 색상 변경: ${color}`;
+            }
+
+            getStatus() {
+                return {
+                    name: '조명 시스템',
+                    icon: '💡',
+                    status: this.isOn ? 'ON' : 'OFF',
+                    value: this.isOn ? `${this.brightness}%` : 'OFF',
+                    color: this.color
+                };
+            }
+        }
+
+        // ========== 서브시스템 2: 온도 조절 시스템 ==========
+        class ClimateControlSystem {
+            constructor() {
+                this.temperature = 22;
+                this.mode = 'auto'; // auto, cool, heat
+                this.isOn = false;
+            }
+
+            turnOn() {
+                this.isOn = true;
+                return `온도 조절 시스템 켜짐`;
+            }
+
+            turnOff() {
+                this.isOn = false;
+                return `온도 조절 시스템 꺼짐`;
+            }
+
+            setTemperature(temp) {
+                this.temperature = temp;
+                return `온도 설정: ${temp}°C`;
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+                return `모드 변경: ${mode}`;
+            }
+
+            getStatus() {
+                return {
+                    name: '온도 조절',
+                    icon: '🌡️',
+                    status: this.isOn ? 'ON' : 'OFF',
+                    value: `${this.temperature}°C (${this.mode})`
+                };
+            }
+        }
+
+        // ========== 서브시스템 3: 보안 시스템 ==========
+        class SecuritySystem {
+            constructor() {
+                this.isArmed = false;
+                this.doorLocked = false;
+                this.cameraActive = false;
+            }
+
+            arm() {
+                this.isArmed = true;
+                this.doorLocked = true;
+                this.cameraActive = true;
+                return `보안 시스템 활성화`;
+            }
+
+            disarm() {
+                this.isArmed = false;
+                this.doorLocked = false;
+                this.cameraActive = false;
+                return `보안 시스템 비활성화`;
+            }
+
+            lockDoors() {
+                this.doorLocked = true;
+                return `문 잠금`;
+            }
+
+            unlockDoors() {
+                this.doorLocked = false;
+                return `문 잠금 해제`;
+            }
+
+            activateCameras() {
+                this.cameraActive = true;
+                return `카메라 활성화`;
+            }
+
+            getStatus() {
+                return {
+                    name: '보안 시스템',
+                    icon: '🔒',
+                    status: this.isArmed ? 'ARMED' : 'DISARMED',
+                    value: this.isArmed ? '보호 중' : '비활성'
+                };
+            }
+        }
+
+        // ========== 서브시스템 4: 공용 방송 시스템 ==========
+        class PublicBroadcastSystem {
+            constructor() {
+                this.isOn = false;
+                this.volume = 0;
+                this.source = 'none';
+            }
+
+            turnOn(source = 'announcement') {
+                this.isOn = true;
+                this.source = source;
+                return `공용 방송 시스템 켜짐 (${source})`;
+            }
+
+            turnOff() {
+                this.isOn = false;
+                this.volume = 0;
+                this.source = 'none';
+                return `공용 방송 시스템 꺼짐`;
+            }
+
+            setVolume(level) {
+                this.volume = level;
+                return `볼륨 조정: ${level}%`;
+            }
+
+            setSource(source) {
+                this.source = source;
+                return `소스 변경: ${source}`;
+            }
+
+            getStatus() {
+                return {
+                    name: '공용 방송',
+                    icon: '📢',
+                    status: this.isOn ? 'ON' : 'OFF',
+                    value: this.isOn ? `${this.volume}% (${this.source})` : 'OFF'
+                };
+            }
+        }
+
+        // ========== 파사드: 단순화된 인터페이스 ==========
+        class BuildingManagementFacade {
+            constructor() {
+                this.lighting = new LightingSystem();
+                this.climate = new ClimateControlSystem();
+                this.security = new SecuritySystem();
+                this.broadcast = new PublicBroadcastSystem();
+            }
+
+            // 업무 시작 모드: 조명 켜기, 온도 조절, 보안 해제
+            setWorkStartMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOn(80));
+                actions.push(this.lighting.setColor('#ffffff'));
+                actions.push(this.climate.turnOn());
+                actions.push(this.climate.setTemperature(22));
+                actions.push(this.climate.setMode('auto'));
+                actions.push(this.security.disarm());
+                actions.push(this.broadcast.turnOn('announcement'));
+                actions.push(this.broadcast.setVolume(20));
+                return actions;
+            }
+
+            // 업무 시간 모드: 밝은 조명, 적절한 온도, 방송 준비
+            setWorkTimeMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOn(100));
+                actions.push(this.lighting.setColor('#ffffff'));
+                actions.push(this.climate.turnOn());
+                actions.push(this.climate.setTemperature(23));
+                actions.push(this.climate.setMode('auto'));
+                actions.push(this.security.disarm());
+                actions.push(this.broadcast.turnOn('background'));
+                actions.push(this.broadcast.setVolume(15));
+                return actions;
+            }
+
+            // 퇴근 시간 모드: 적절한 조명, 편안한 온도, 방송
+            setAfterWorkMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOn(60));
+                actions.push(this.lighting.setColor('#fff5e6'));
+                actions.push(this.climate.turnOn());
+                actions.push(this.climate.setTemperature(24));
+                actions.push(this.climate.setMode('auto'));
+                actions.push(this.security.disarm());
+                actions.push(this.broadcast.turnOn('announcement'));
+                actions.push(this.broadcast.setVolume(25));
+                return actions;
+            }
+
+            // 야간 모드: 최소 조명, 낮은 온도, 보안 강화
+            setNightMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOn(30));
+                actions.push(this.lighting.setColor('#4a4a6a'));
+                actions.push(this.climate.turnOn());
+                actions.push(this.climate.setTemperature(20));
+                actions.push(this.climate.setMode('cool'));
+                actions.push(this.security.arm());
+                actions.push(this.broadcast.turnOff());
+                return actions;
+            }
+
+            // 퇴근 모드: 모든 조명 끄기, 보안 활성화
+            setAfterHoursMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOff());
+                actions.push(this.climate.turnOff());
+                actions.push(this.security.arm());
+                actions.push(this.security.lockDoors());
+                actions.push(this.security.activateCameras());
+                actions.push(this.broadcast.turnOff());
+                return actions;
+            }
+
+            // 절전 모드: 최소 조명, 보안 활성화, 모든 시스템 절약
+            setPowerSaveMode() {
+                const actions = [];
+                actions.push(this.lighting.turnOn(10));
+                actions.push(this.lighting.setColor('#1a1a2e'));
+                actions.push(this.climate.turnOn());
+                actions.push(this.climate.setTemperature(21));
+                actions.push(this.climate.setMode('auto'));
+                actions.push(this.security.arm());
+                actions.push(this.broadcast.turnOff());
+                return actions;
+            }
+
+            // 모든 서브시스템 상태 가져오기
+            getAllStatus() {
+                return [
+                    this.lighting.getStatus(),
+                    this.climate.getStatus(),
+                    this.security.getStatus(),
+                    this.broadcast.getStatus()
+                ];
+            }
+        }
+
+        // ========== 애플리케이션 ==========
+        const App = {
+            facade: new BuildingManagementFacade(),
+            currentMode: null,
+
+            init() {
+                this.setupEventListeners();
+                this.updateSubsystemStatus();
+                this.log('시스템 초기화 완료', 'info');
+            },
+
+            setupEventListeners() {
+                document.getElementById('btnMorning').onclick = () => this.setMode('morning');
+                document.getElementById('btnDay').onclick = () => this.setMode('day');
+                document.getElementById('btnEvening').onclick = () => this.setMode('evening');
+                document.getElementById('btnNight').onclick = () => this.setMode('night');
+                document.getElementById('btnAway').onclick = () => this.setMode('away');
+                document.getElementById('btnSleep').onclick = () => this.setMode('sleep');
+            },
+
+            setMode(modeName) {
+                // 버튼 활성화 상태 업데이트
+                document.querySelectorAll('.facade-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(`btn${modeName.charAt(0).toUpperCase() + modeName.slice(1)}`).classList.add('active');
+
+                this.currentMode = modeName;
+                const modeNames = {
+                    morning: '업무 시작 모드',
+                    day: '업무 시간 모드',
+                    evening: '퇴근 시간 모드',
+                    night: '야간 모드',
+                    away: '퇴근 모드',
+                    sleep: '절전 모드'
+                };
+
+                this.log(`=== ${modeNames[modeName]} 활성화 ===`, 'success');
+
+                // 파사드를 통해 복잡한 서브시스템 제어
+                let actions;
+                switch (modeName) {
+                    case 'morning':
+                        actions = this.facade.setWorkStartMode();
+                        break;
+                    case 'day':
+                        actions = this.facade.setWorkTimeMode();
+                        break;
+                    case 'evening':
+                        actions = this.facade.setAfterWorkMode();
+                        break;
+                    case 'night':
+                        actions = this.facade.setNightMode();
+                        break;
+                    case 'away':
+                        actions = this.facade.setAfterHoursMode();
+                        break;
+                    case 'sleep':
+                        actions = this.facade.setPowerSaveMode();
+                        break;
+                }
+
+                // 각 액션을 로그에 기록
+                actions.forEach(action => {
+                    this.log(action, 'info');
+                });
+
+                // 서브시스템 상태 업데이트
+                this.updateSubsystemStatus();
+            },
+
+            updateSubsystemStatus() {
+                const container = document.getElementById('subsystemList');
+                container.innerHTML = '';
+
+                const statuses = this.facade.getAllStatus();
+                statuses.forEach(status => {
+                    const item = document.createElement('div');
+                    item.className = 'subsystem-item';
+                    item.innerHTML = `
+                        <div class="subsystem-info">
+                            <div class="subsystem-icon">${status.icon}</div>
+                            <div class="subsystem-details">
+                                <div class="subsystem-name">${status.name}</div>
+                                <div class="subsystem-status">${status.status}</div>
+                            </div>
+                        </div>
+                        <div class="subsystem-value">${status.value}</div>
+                    `;
+                    container.appendChild(item);
+                });
+            },
+
+            log(message, type = 'info') {
+                const logContainer = document.getElementById('activityLog');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                const time = new Date().toLocaleTimeString('ko-KR');
+                entry.innerHTML = `<span class="log-time">[${time}]</span>${message}`;
+                logContainer.insertBefore(entry, logContainer.firstChild);
+
+                // 최대 50개 항목만 유지
+                while (logContainer.children.length > 50) {
+                    logContainer.removeChild(logContainer.lastChild);
+                }
+            }
+        };
+
+        // 초기화
+        App.init();
+    </script>
+</body>
+
+</html>
